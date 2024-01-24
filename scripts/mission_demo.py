@@ -1,7 +1,10 @@
 import rospy
 import mavros_msgs
-# import geometry_msgs
+import geometry_msgs
+from geometry_msgs.msg import PoseStamped
 from mavros_msgs.srv import CommandBool
+from vicon_integration import StateUAV
+import time
 
 
 def set_mode():
@@ -16,11 +19,11 @@ def set_mode():
         print("Service call failed: %s" % e)
 
 
-def arm(input):
+def arm(status):
     rospy.wait_for_service('/mavros/cmd/arming', timeout=30)
     try:
         cmd_arm = mavros_msgs.srv.CommandBoolRequest()
-        cmd_arm.value = input
+        cmd_arm.value = status
         service_caller = rospy.ServiceProxy('/mavros/cmd/arming', mavros_msgs.srv.CommandBool)
         service_caller(cmd_arm)
         return True
@@ -35,6 +38,10 @@ def takeoff(altitude):
         takeoff_request = cmd_takeoff(altitude=altitude, latitude=0, longitude=0, min_pitch=0, yaw=0)
         service_caller = rospy.ServiceProxy('/mavros/cmd/takeoff', mavros_msgs.srv.CommandTOL)
         response = service_caller(takeoff_request)
+
+        while local_state.Pz - altitude < local_state.error_tol:
+            print('UAV is taking off...')
+
         return response.success
     except rospy.ServiceException as e:
         print("Service call failed: %s" % e)
@@ -59,9 +66,10 @@ def move_to_position(x, y, z):
     # Publish the PositionTarget message
     position_target_pub = rospy.Publisher('/mavros/setpoint_raw/local', mavros_msgs.msg.PositionTarget, queue_size=10)
     rate = rospy.Rate(10)  # 10 Hz
-    for _ in range(10):  # Publish for 1 second
-        position_target_pub.publish(desired_position)
-        rate.sleep()
+    while (local_state.Px ** 2 + local_state.Py ** 2 + local_state.Pz ** 2) ** (0.5) < local_state.error_tol:
+        print("UAV is moving to waypoint")
+
+    return True
 
 
 def land():
@@ -78,6 +86,11 @@ def land():
 
 if __name__ == "__main__":
     rospy.init_node('UAV_node', anonymous=True)
+
+    local_state = StateUAV
+    # Update the position data:
+    # local_state.x, local_state.y, and local_state.z are now available for all functions
+    rospy.Subscriber('/mavros/local_position/pose', PoseStamped, local_state.publish_local_position)
 
     # Set mode to GUIDED
     if set_mode():
@@ -99,10 +112,10 @@ if __name__ == "__main__":
     else:
         print('Set mode failed')
 
-    # Wait to allow takeoff command to complete
-    rospy.sleep(15)
-
-    # move_to_position(10, 4, 3)
+    if move_to_position(10, 4, 3):
+        print("UAV has reached waypoint")
+    else:
+        print("Move command has failed")
 
     # Land
     if land():
