@@ -39,8 +39,10 @@ def takeoff(altitude):
         service_caller = rospy.ServiceProxy('/mavros/cmd/takeoff', mavros_msgs.srv.CommandTOL)
         response = service_caller(takeoff_request)
 
-        while local_state.Pz - altitude < local_state.error_tol:
-            print('UAV is taking off...')
+        print(local_state.Pz - altitude)
+
+        while abs(local_state.Pz - altitude) > local_state.error_tol:
+            pass
 
         return response.success
     except rospy.ServiceException as e:
@@ -66,8 +68,9 @@ def move_to_position(x, y, z):
     # Publish the PositionTarget message
     position_target_pub = rospy.Publisher('/mavros/setpoint_raw/local', mavros_msgs.msg.PositionTarget, queue_size=10)
     rate = rospy.Rate(10)  # 10 Hz
-    while (local_state.Px ** 2 + local_state.Py ** 2 + local_state.Pz ** 2) ** (0.5) < local_state.error_tol:
-        print("UAV is moving to waypoint")
+    while ((local_state.Px - x) ** 2 + (local_state.Py - y) ** 2 + (local_state.Pz - z) ** 2) ** (0.5) > local_state.error_tol:
+        position_target_pub.publish(desired_position)
+        pass
 
     return True
 
@@ -87,10 +90,19 @@ def land():
 if __name__ == "__main__":
     rospy.init_node('UAV_node', anonymous=True)
 
-    local_state = StateUAV
+    local_state = StateUAV()
+    print(local_state.Px)
     # Update the position data:
     # local_state.x, local_state.y, and local_state.z are now available for all functions
+    rospy.wait_for_message('/mavros/local_position/pose', PoseStamped)
+    print('Position data received')
     rospy.Subscriber('/mavros/local_position/pose', PoseStamped, local_state.publish_local_position)
+
+    while local_state.Px is None:
+        print('Waiting for position data')
+        time.sleep(1)
+
+    print(local_state.Py)
 
     # Set mode to GUIDED
     if set_mode():
@@ -98,24 +110,18 @@ if __name__ == "__main__":
         # Arm the vehicle
         if arm(True):
             print("Vehicle armed")
-
-            # Specify the takeoff altitude (in meters)
-            takeoff_altitude = 1.0
-
-            # Takeoff
-            if takeoff(takeoff_altitude):
-                print("Vehicle taking off to {} meters".format(takeoff_altitude))
-            else:
-                print("Takeoff failed")
         else:
             print("Arming failed")
     else:
         print('Set mode failed')
 
-    if move_to_position(10, 4, 3):
-        print("UAV has reached waypoint")
-    else:
-        print("Move command has failed")
+    # Specify the takeoff altitude (in meters)
+    takeoff_altitude = 10.0
+    takeoff(takeoff_altitude)
+    print('Vehicle is at: ', takeoff_altitude, ' m')
+
+    move_to_position(25, 30, 20)
+    print("UAV has reached waypoint")
 
     # Land
     if land():
