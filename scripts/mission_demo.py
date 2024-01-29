@@ -5,6 +5,7 @@ from geometry_msgs.msg import PoseStamped, QuaternionStamped
 from mavros_msgs.srv import CommandBool
 from vicon_integration import StateUAV
 import time
+from mavros_msgs.srv import ParamSet
 
 
 def set_mode(mode):
@@ -39,8 +40,6 @@ def takeoff(altitude):
         service_caller = rospy.ServiceProxy('/mavros/cmd/takeoff', mavros_msgs.srv.CommandTOL)
         response = service_caller(takeoff_request)
 
-        print(local_state.Pz - altitude)
-
         while abs(local_state.Pz - altitude) > local_state.error_tol:
             pass
 
@@ -51,7 +50,7 @@ def takeoff(altitude):
 
 def move_to_position(x, y, z):
     # Create a mavros PositionTarget message
-    if x < local_state.x_lim & y < local_state.y_lim & z < local_state.z_lim:
+    if (x < local_state.x_lim) & (y < local_state.y_lim) & (z < local_state.z_lim):
         desired_position = mavros_msgs.msg.PositionTarget()
         desired_position.coordinate_frame = desired_position.FRAME_LOCAL_NED
         desired_position.type_mask = desired_position.IGNORE_VX | desired_position.IGNORE_VY | desired_position.IGNORE_VZ | \
@@ -76,6 +75,7 @@ def move_to_position(x, y, z):
         return True
 
     else:
+        print(x, y, z, local_state.x_lim, local_state.y_lim, local_state.z_lim)
         print('Destination point is invalid')
 
 
@@ -90,7 +90,7 @@ def land():
         while abs(local_state.Pz - 0) > local_state.error_tol:
             pass
 
-        return response.success
+        return True
 
     except rospy.ServiceException as e:
         print("Service call failed: %s" % e)
@@ -100,9 +100,12 @@ if __name__ == "__main__":
     rospy.init_node('UAV_node', anonymous=True)
 
     local_state = StateUAV()
-    local_state.x_lim = 25
-    local_state.y_lim = 25
-    local_state.z_lim = 30
+
+    # local_state.set_odometry_parameters()
+
+    local_state.x_lim = 100
+    local_state.y_lim = 100
+    local_state.z_lim = 100
     # Update the position data:
     # local_state.Px, local_state.Py, and local_state.Pz are now available for all functions
     rospy.wait_for_message('/mavros/local_position/pose', PoseStamped)
@@ -113,8 +116,7 @@ if __name__ == "__main__":
         print('Waiting for position data')
         time.sleep(1)
 
-    local_state.set_odometry_parameters()
-
+    #
     time.sleep(5)
 
     # rospy.wait_for_message('/mavros/imu/data', PoseStamped)
@@ -151,7 +153,7 @@ if __name__ == "__main__":
         print("Land failed")
 
     # Disarm the motors
-    if arm(False):
-        print('Vehicle disarmed')
-    else:
-        print('Disarm failed: vehicle still armed')
+    # if arm(False):
+    #     print('Vehicle disarmed')
+    # else:
+    #     print('Disarm failed: vehicle still armed')

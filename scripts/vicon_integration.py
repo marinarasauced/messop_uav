@@ -30,10 +30,21 @@ class StateUAV:
         param_set_service = rospy.ServiceProxy('/mavros/param/set', ParamSet)
 
         # set the priority for /mavros/odometry/out
-        param_set_service(param_id='EK3_SRC1_POSZ', value=[1, 0.0])
+        var = int(1)
+        param_set_service(param_id='EK3_ENABLE', value=[1, 0])
+        param_set_service(param_id='EK2_ENABLE', value=[0])
+        param_set_service(param_id='AHRS_EKF_TYPE', value=[3])
+        param_set_service(param_id='EK3_GPS_TYPE', value=[0])
+        param_set_service(param_id='EK3_MAG_CAL', value=[5])
+        param_set_service(param_id='EK3_ALT_SOURCE', value=[2])
+        param_set_service(param_id='GPS_TYPE', value=[14, 0])
+        param_set_service(param_id='GPS_DELAY_MS', value=[50])
+        param_set_service(param_id='COMPASS_USE', value=[0])
+        param_set_service(param_id='COMPASS_USE2', value=[0])
+        param_set_service(param_id='COMPASS_USE3', value=[0])
 
         # set the priority for /mavros/odometry/in
-        param_set_service(param_id='EK3_SRC2_POSZ', value=[1, 1.0])
+        # param_set_service(param_id='EK3_SRC2_POSZ', value=[1, 1.0])
 
     def publish_local_position(self, position):
         # Constantly update the location of the UAV
