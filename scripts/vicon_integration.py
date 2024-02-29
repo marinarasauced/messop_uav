@@ -2,10 +2,12 @@
 
 import rospy
 from geometry_msgs.msg import PoseStamped
+from mavros_msgs.srv import ParamSet
 
 
 class StateUAV:
     def __init__(self):
+        # The codes knowledge of where the UAV is
         self.Px = None
         self.Py = None
         self.Pz = None
