@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import rospy
 from geometry_msgs.msg import PoseStamped
 
@@ -8,12 +10,12 @@ class StateUAV:
         self.Py = None
         self.Pz = None
         self.error_tol = 0.1    # in meters
+        self.pub = rospy.Publisher('/mavros/local_position/pose', PoseStamped, queue_size=10)
 
     def publish_local_position(self, vicon_data):
-        rospy.init_node('local_position_publisher', anonymous=True)
-        pub = rospy.Publisher('/mavros/local_position/pose', PoseStamped, queue_size=10)
+        # rospy.init_node('local_position_publisher', anonymous=True)
 
-        # rate = rospy.Rate(10)  # Use this to dictate the frequency that location is published
+        rate = rospy.Rate(10)  # Use this to dictate the frequency that location is published
 
         # Constantly update the location of the UAV
         while not rospy.is_shutdown():
@@ -27,7 +29,16 @@ class StateUAV:
             local_pose.pose.position.y = 2.0
             local_pose.pose.position.z = 3.0
 
-            # Publish to mavros
-            pub.publish(local_pose)
+            # Set local orientation
+            local_pose.pose.orientation.x = 1.0
+            local_pose.pose.orientation.y = 1.0
+            local_pose.pose.orientation.z = 1.0
+            local_pose.pose.orientation.w = 1.0
 
-            # rate.sleep()
+            # Publish to mavros
+            self.pub.publish(local_pose)
+
+            rate.sleep()
+
+    def center_vicon_coordinates(self):
+

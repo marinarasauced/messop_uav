@@ -6,6 +6,9 @@ from mavros_msgs.srv import CommandBool
 from vicon_integration import StateUAV
 import time
 
+# TODO: add a "geofence" or interrupt to bound the fly zone of the UAV
+# TODO: add support for if VICON feedback is dropped
+
 
 def set_mode():
     rospy.wait_for_service('/mavros/set_mode', timeout=30)
